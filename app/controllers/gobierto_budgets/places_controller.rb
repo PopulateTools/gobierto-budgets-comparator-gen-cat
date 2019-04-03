@@ -1,5 +1,7 @@
 module GobiertoBudgets
   class PlacesController < GobiertoBudgets::ApplicationController
+    include RankingTableHelper
+    include GobiertoBudgets::BudgetLineWidgetHelper
 
     layout :choose_layout
     before_action :set_current_organization, except: [:ranking, :compare, :redirect]
@@ -9,9 +11,7 @@ module GobiertoBudgets
 
     attr_reader :current_organization
 
-    helper_method :current_organization
-
-    include RankingTableHelper
+    helper_method :current_organization, :featured_budget_line?
 
     def show
       if @year.nil?
@@ -28,6 +28,14 @@ module GobiertoBudgets
 
       @expense_lines = BudgetLine.search(organization_id: current_organization.id, level: 1, year: @year, kind: BudgetLine::EXPENSE, type: @area_name, recalculate_aggregations: true)
       @no_data = @income_lines['hits'].empty?
+
+      load_featured_budget_line(allow_year_fallback: true)
+
+      if featured_budget_line?
+        @amount_per_inhabitant_summary = budget_per_inhabitant_summary(default_budget_line_params)
+        @amount_summary = amount_summary(default_budget_line_params)
+        @percentage_over_total_summary = percentage_over_total_summary(default_budget_line_params)
+      end
 
       respond_to do |format|
         format.html
@@ -114,13 +122,6 @@ module GobiertoBudgets
 
     def ranking
       @filters = params[:f]
-      if current_organization && params[:page].nil?
-        place_position = GobiertoBudgets::Ranking.place_position(year: @year, ine_code: current_organization.id, code: @code, kind: @kind, area_name: @area_name, variable: @variable, filters: @filters)
-
-        page = GobiertoBudgets::Ranking.page_from_position(place_position)
-        redirect_to url_for(params.merge(page: page)) and return
-      end
-
       @per_page = GobiertoBudgets::Ranking.per_page
       @page = params[:page] ? params[:page].to_i : 1
       render_404 and return if @page <= 0
