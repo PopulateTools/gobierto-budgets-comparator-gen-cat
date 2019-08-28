@@ -12,6 +12,7 @@ function responsive() {
   if($(window).width() > 740) {
     return true;
   }
+  return false;
 }
 
 $(document).on('turbolinks:load', function() {
@@ -41,8 +42,23 @@ $(document).on('turbolinks:load', function() {
     rebindAll();
   }
 
+  var places = [];
+
   var searchOptions = {
-    serviceUrl: '/search',
+    lookup: function (query, done) {
+      $.ajax('/places.json', {
+        complete: function(data) {
+          var suggestions = data.responseJSON.filter(function(result){
+            return result.value.indexOf(query) !== -1 || result.data.slug.indexOf(query) !== -1 ||
+              result.value.toLowerCase().indexOf(query) !== -1
+          });
+          var result = {
+            suggestions: suggestions
+          };
+          done(result);
+        }
+      })
+    },
     onSelect: function(suggestion) {
       if(suggestion.data.type == 'Place') {
         ga('send', 'event', 'Place Search', 'Click', 'Search', {nonInteraction: true});
@@ -127,18 +143,41 @@ $(document).on('turbolinks:load', function() {
 
   $('.switcher').hover(function(e) {
     e.preventDefault();
-    // Don't act if the clicked element belongs to map sidebar
-    if($(this).parents('.map_sidebar').length === 0){
+    // Don't act in mobile
+    if(responsive() && !$(this).parents('.map_sidebar').length){
       $(this).find('ul').show();
     }
   }, function(e) {
     $(this).find('ul').hide();
   });
 
+  $('.kind_switcher').click(function(e){
+    // Only in mobile
+    if(!responsive() && !$('.home_section .switcher').length){
+      var $ul = $(this).find('ul');
+      if(!$ul.is(':visible')){
+        $ul.show();
+        e.preventDefault();
+      } else {
+        $ul.hide();
+      }
+    }
+  });
+
   $('.year_switcher').click(function(e){
     ga('send', 'event', 'Year Selection', 'Click', 'ChangeYear', {nonInteraction: true});
     if(mixpanel.length > 0) {
       mixpanel.track('Year Selection', { 'Year Selected': e.target.innerHTML});
+    }
+    // Only in mobile
+    if(!responsive() && !$(this).parents('.map_sidebar').length){
+      var $ul = $(this).find('ul');
+      if(!$ul.is(':visible')){
+        $ul.show();
+        e.preventDefault();
+      } else {
+        $ul.hide();
+      }
     }
   });
 
@@ -152,26 +191,28 @@ $(document).on('turbolinks:load', function() {
     var value = tgt.data('value');
     var switcher = tgt.parents('.switcher');
     var selected = switcher.find('a.selected');
-    selected.data('value', value);
-    selected.html(tgt.text() + " <i class='fa fa-angle-down'></i>");
-    switcher.find('ul').hide();
+    var $ul = switcher.find('ul');
+    if(!$ul.is(':visible')){
+      $ul.show();
+    } else {
+      $ul.hide();
+      selected.data('value', value);
+      selected.html(tgt.text() + " <i class='fa fa-angle-down'></i>");
 
-    var form = tgt.parents('form');
-    var action = form.attr('action');
-    var kind_re = /[GI]\/.*\//;
+      var form = tgt.parents('form');
+      var action = form.attr('action');
+      var kind_re = /[GI]\/.*\//;
 
-    if (value == 'I') {
-      action = action.replace(kind_re, 'I/economic/');
+      if (value == 'I') {
+        action = action.replace(kind_re, 'I/economic/');
+      } else if (value == 'G') {
+        action = action.replace(kind_re, 'G/functional/');
+      } else {
+        $('input#f_aarr[type=hidden]').val(value);
+      }
+
+      form.attr('action',action);
     }
-    else if (value == 'G') {
-      action = action.replace(kind_re, 'G/functional/');
-    }
-    else {
-      $('input#f_aarr[type=hidden]').val(value);
-    }
-
-    form.attr('action',action);
-
   });
 
   $('.modal_widget').hover(function(e) {
@@ -230,11 +271,11 @@ $(document).on('turbolinks:load', function() {
   });
 
   function parent_treemap_url(parent_url) {
-    var pattern = /parent_code=\d+/;
+    var pattern = /parent\/\d+/;
     parent_url = parent_url.replace(pattern, function(match) {
       return match.substring(0,match.length - 1)
     });
-    return parent_url + '&amp;format=json';
+    return parent_url + '.json';
   }
 
   /* Tree navigation */
@@ -452,11 +493,6 @@ $(document).on('turbolinks:load', function() {
       mixpanel.track("Expense Type Selector", {"Type": eventLabel});
     }
   });
-
-  $('.ranking_card').click(function(e) {
-    Turbolinks.visit($(this).find('h2 a').attr('href'));
-  });
-
 
   $('.toggle_div').on('click', function(e){
     e.preventDefault();

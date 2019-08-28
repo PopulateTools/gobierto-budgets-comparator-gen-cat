@@ -10,11 +10,10 @@ gem 'rollbar'
 gem 'meta-tags'
 gem 'ine-places'
 gem 'actionpack-action_caching'
+gem "actionpack-page_caching"
 gem 'ruby_px'
 gem "kaminari", "~> 1.0"
-gem 'geocoder'
 gem 'responders'
-gem 'daemons'
 gem 'config'
 gem 'dalli'
 gem 'aws-ses'
@@ -24,6 +23,9 @@ gem 'json', '~> 2.1'
 gem "gobierto_data", git: "https://github.com/PopulateTools/gobierto_data.git"
 gem "bootsnap"
 gem 'sprockets', '~> 3.7.2'
+
+# Socrata integration
+gem 'soda-ruby', '~> 0.2.24', require: 'soda'
 
 # Frontend
 gem 'jquery-rails'
@@ -40,9 +42,6 @@ gem 'elasticsearch'
 gem 'elasticsearch-extensions'
 gem 'oj'
 gem 'hashie'
-
-# Socrata integration
-gem 'soda-ruby', '~> 0.2.24', require: 'soda'
 
 group :development, :test do
   gem "byebug", platform: :mri

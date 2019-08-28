@@ -47,7 +47,20 @@ function extractFormParameters($sel){
 }
 
 var searchOptions = {
-  serviceUrl: '/search',
+  lookup: function (query, done) {
+    $.ajax('/places.json', {
+      complete: function(data) {
+        var suggestions = data.responseJSON.filter(function(result){
+          return result.value.indexOf(query) !== -1 || result.data.slug.indexOf(query) !== -1 ||
+            result.value.toLowerCase().indexOf(query) !== -1
+        });
+        var result = {
+          suggestions: suggestions
+        };
+        done(result);
+      }
+    })
+  },
   onSelect: function(suggestion) {
     if(suggestion.data.type == 'Place') {
       ga('send', 'event', 'Compare Search', 'Click', 'Search', {nonInteraction: true});
@@ -71,7 +84,7 @@ $('#compare_form').on('submit', function(e){
   e.preventDefault();
   var slugs = extractFormParameters($(this));
   if(slugs.length > 0) {
-    Turbolinks.visit('/compare/' + slugs.join(':') + '/2015/G/functional');
+    Turbolinks.visit('/compare/' + slugs.join(':') + '/<%= Date.today.year - 1 %>/G/functional');
   }
 });
 
