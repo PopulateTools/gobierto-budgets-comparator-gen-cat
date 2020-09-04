@@ -87,7 +87,11 @@ module GobiertoBudgets
         _source: ["total_budget", "ine_code", "total_budget_per_inhabitant"]
       )
 
-      response['hits']['hits'].map{ |h| h['_source'] }
+      if response.empty?
+        {}
+      else
+        response['hits']['hits'].map{ |h| h['_source'] }
+      end
     end
 
     def self.for_ranking(year, variable, kind, offset, per_page, filters = {})
@@ -178,7 +182,7 @@ module GobiertoBudgets
       SearchEngine.client.search index: index,
         type: SearchEngineConfiguration::TotalBudget.type,
         body: query,
-        filter_path: "hits.hits._source",
+        filter_path: "hits.hits._source,hits.total",
         _source: ["total_budget", "ine_code", "total_budget_per_inhabitant"]
     end
   end

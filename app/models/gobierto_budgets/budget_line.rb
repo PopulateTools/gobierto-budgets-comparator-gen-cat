@@ -273,8 +273,9 @@ module GobiertoBudgets
       end
 
       terms << {term: { autonomy_id: aarr_filter }}  unless aarr_filter.blank?
-
       terms << { exists: { field: "ine_code" } } if only_municipalities
+      terms << { missing: { field: "custom_code" } }
+      terms << { missing: { field: "functional_code" } }
 
       query = {
         sort: [ { options[:variable].to_sym => { order: 'desc' } } ],
@@ -282,12 +283,7 @@ module GobiertoBudgets
           filtered: {
             filter: {
               bool: {
-                must: terms,
-                must_not: {
-                  exists: {
-                    field: "functional_code"
-                  }
-                }
+                must: terms
               }
             }
           }
@@ -314,10 +310,11 @@ module GobiertoBudgets
 
     def self.for_ranking(options, only_municipalities=false)
       response = budget_line_query(options, only_municipalities)
-      results = response['hits']['hits'].map{|h| h['_source']}
-      total_elements = response['hits']['total']
-
-      return results, total_elements
+      if results = response['hits']['hits']
+        return results.map{|h| h['_source']}, response['hits']['total']
+      else
+        return [], 0
+      end
     end
 
     def self.place_position_in_ranking(options, only_municipalities=false)
