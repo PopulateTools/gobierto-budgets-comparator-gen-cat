@@ -13,6 +13,10 @@ $(document).on('turbolinks:load', function() {
       currency: ["", "€"]
     });
 
+    var mapPropertiesLat = window.mapSettings.centerLat || 40.416775
+    var mapPropertiesLon = window.mapSettings.centerLon || -3.703790
+    var mapPropertiesZoom = window.mapSettings.zoomLevel || 5
+
     fomartAmounts = locale.format(",")
 
     var deckgl
@@ -88,9 +92,9 @@ $(document).on('turbolinks:load', function() {
     ]
 
     var INITIAL_VIEW_STATE = {
-      latitude: 40.416775,
-      longitude: -3.703790,
-      zoom: 5,
+      latitude: mapPropertiesLat,
+      longitude: mapPropertiesLon,
+      zoom: mapPropertiesZoom,
       minZoom: 5,
       maxZoom: 8
     };
@@ -120,27 +124,13 @@ $(document).on('turbolinks:load', function() {
 
 
     function onClick(info, event) {
-      var municipality = info.object.properties.name
-      var replaced = municipality.replace(/ /g, '-');
-      window.location.href = "/places/" + accentsTidy(replaced) + "/" + year;
+      var municipalityInfo = info.object.properties.name
+      var municipalityFilter = dataMunicipalities.filter(function(municipality) {
+        return municipality.nombre === municipalityInfo
+      })
+      var municipalitySlug = municipalityFilter[0].slug
+      window.location.href = "/places/" + municipalitySlug + "/" + year;
     }
-
-    //Replace characters from the names of municipalities to build URL's
-    accentsTidy = function(s){
-      var r = s.toLowerCase();
-      r = r.replace(/ /g, '-');
-      r = r.replace(new RegExp("[àáâãäå]", 'g'),"a");
-      r = r.replace(new RegExp("æ", 'g'),"ae");
-      r = r.replace(new RegExp("ç", 'g'),"c");
-      r = r.replace(new RegExp("[èéêë]", 'g'),"e");
-      r = r.replace(new RegExp("[ìíîï]", 'g'),"i");
-      r = r.replace(new RegExp("ñ", 'g'),"n");
-      r = r.replace(new RegExp("[òóôõö]", 'g'),"o");
-      r = r.replace(new RegExp("œ", 'g'),"oe");
-      r = r.replace(new RegExp("[ùúûü]", 'g'),"u");
-      r = r.replace(new RegExp("[ýÿ]", 'g'),"y");
-      return r;
-    };
 
     function getTooltip(_ref) {
       var object = _ref.object;
@@ -218,6 +208,31 @@ $(document).on('turbolinks:load', function() {
 
         var MUNICIPALITIES = {}
         MUNICIPALITIES = topojson.feature(dataTOPOJSON, dataTOPOJSON.objects.municipalities);
+
+        //In some cases, we need to filter the map with a series of specific municipalities.
+        var arrayMunicipalitiesScope = window.placesScope
+
+        //If it contains codes we will filter through them.
+        if (typeof arrayMunicipalitiesScope != "undefined" && arrayMunicipalitiesScope != null && arrayMunicipalitiesScope.length != null && arrayMunicipalitiesScope.length > 0) {
+          //Filter the geometries of topojson with ine codes
+          MUNICIPALITIES.features = filterMunicipalitiesByScope(arrayMunicipalitiesScope)
+          //Filter the select only with the municipalities filtered
+          dataMunicipalities = filterSelectMunicipalities(arrayMunicipalitiesScope)
+        }
+
+        function filterMunicipalitiesByScope(ineCodes) {
+          var filteredMunicipalities = MUNICIPALITIES.features.filter(function(municipality) {
+            return ineCodes.includes(municipality.properties.cp)
+          })
+          return filteredMunicipalities
+        }
+
+        function filterSelectMunicipalities(ineCodes) {
+          var filteredMunicipalities = dataMunicipalities.filter(function(municipality) {
+            return ineCodes.includes(municipality.codigo_ine)
+          })
+          return filteredMunicipalities
+        }
 
         //Draw municipalities from budgtes table
         if (indicator === 'amount_per_inhabitant') {
@@ -481,6 +496,9 @@ $(document).on('turbolinks:load', function() {
       d3.json(urlTOPOJSON, function(data) {
         dataTOPOJSON = data
         d3.csv(urlMunicipalities, function(dataFROMMunicipalities) {
+          dataFROMMunicipalities.forEach(function(d) {
+            d.codigo_ine = +d.codigo_ine
+          })
           dataMunicipalities = dataFROMMunicipalities
         })
 
